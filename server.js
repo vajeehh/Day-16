@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const express = require("express");
 const tokenBlacklist = [];
 const mongoose = require("mongoose");
@@ -5,9 +7,14 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("./models/User");
 
+const PORT = process.env.PORT || 3000;
+const MONGODB_URI = process.env.MONGODB_URI;
+const JWT_SECRET = process.env.JWT_SECRET;
+
 const app = express();
 
 app.use(express.json());
+
 app.post("/signup", async (req, res) => {
     try {
         const { name, email, password } = req.body;
@@ -64,15 +71,15 @@ app.post("/login", async (req, res) => {
             id: user._id,
             role: user.role
         },
-        "secretkey",
+        JWT_SECRET,
         { expiresIn: "1h" }
     );
+
     res.json({
         msg: "Login successful",
         token
     });
 });
-
 
 function auth(req, res, next) {
     const token = req.header("Authorization")?.replace("Bearer ", "");
@@ -90,7 +97,7 @@ function auth(req, res, next) {
     }
 
     try {
-        const verified = jwt.verify(token, "secretkey");
+        const verified = jwt.verify(token, JWT_SECRET);
         req.user = verified;
         next();
     } catch (err) {
@@ -122,19 +129,19 @@ app.post("/logout", auth, (req, res) => {
     });
 });
 
-
 app.get("/profile", auth, async (req, res) => {
     const user = await User.findById(req.user.id).select("-password");
 
     res.json(user);
 });
+
 mongoose
-    .connect("mongodb://127.0.0.1:27017/authdb")
+    .connect(MONGODB_URI)
     .then(() => {
         console.log("MongoDB Connected");
 
-        app.listen(3000, () => {
-            console.log("Server running on http://localhost:3000");
+        app.listen(PORT, () => {
+            console.log(`Server running on port ${PORT}`);
         });
     })
     .catch((err) => {
